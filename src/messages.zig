@@ -93,3 +93,45 @@ pub fn chatIds(allocator: std.mem.Allocator, ids: *std.ArrayListUnmanaged([]u8))
         }
     }
 }
+pub fn sendToChat(allocator: std.mem.Allocator, chat_id: []const u8, text: []const u8) !void {
+    const escaped = try escapeForAppleScript(allocator, text);
+    defer allocator.free(escaped);
+
+    const script = try std.fmt.allocPrint(allocator,
+        \\tell application "Messages"
+        \\    set c to chat id "{s}"
+        \\    send "{s}" to c
+        \\end tell
+    , .{ chat_id, escaped });
+    defer allocator.free(script);
+
+    var result = try runAppleScript(allocator, script);
+    defer result.deinit();
+
+    if (!result.success) return Error.SendFailed;
+}
+
+fn escapeForAppleScript(allocator: std.mem.Allocator, text: []const u8) ![]u8 {
+    var escaped: std.ArrayListUnmanaged(u8) = .empty;
+    errdefer escaped.deinit(allocator);
+
+    for (text) |c| {
+        switch (c) {
+            '"' => try escaped.appendSlice(allocator, "\\\""),
+            '\\' => try escaped.appendSlice(allocator, "\\\\"),
+            '\n' => try escaped.appendSlice(allocator, "\\n"),
+            '\r' => try escaped.appendSlice(allocator, "\\r"),
+            '\t' => try escaped.appendSlice(allocator, "\\t"),
+            else => try escaped.append(allocator, c),
+        }
+    }
+
+    return escaped.toOwnedSlice(allocator);
+}
+
+test "escapeForAppleScript" {
+    const allocator = std.testing.allocator;
+    const escaped = try escapeForAppleScript(allocator, "Hello \"World\"\nNew line");
+    defer allocator.free(escaped);
+    try std.testing.expectEqualStrings("Hello \\\"World\\\"\\nNew line", escaped);
+}
