@@ -47,3 +47,26 @@ pub fn sendMessage(allocator: std.mem.Allocator, recipient: []const u8, text: []
 
     if (!result.success) return Error.SendFailed;
 }
+
+pub fn isMessagesRunning(allocator: std.mem.Allocator) !bool {
+    const script =
+        \\tell application "System Events"
+        \\    return (name of processes) contains "Messages"
+        \\end tell
+    ;
+
+    var result = try runAppleScript(allocator, script);
+    defer result.deinit();
+
+    if (!result.success) return false;
+    return std.mem.eql(u8, std.mem.trim(u8, result.stdout, " \t\n\r"), "true");
+}
+
+pub fn launchMessages(allocator: std.mem.Allocator) !void {
+    var result = try runAppleScript(allocator,
+        \\tell application "Messages"
+        \\    activate
+        \\end tell
+    );
+    defer result.deinit();
+}
