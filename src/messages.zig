@@ -70,6 +70,19 @@ pub fn launchMessages(allocator: std.mem.Allocator) !void {
     );
     defer result.deinit();
 }
+
+pub fn getChatCount(allocator: std.mem.Allocator) !usize {
+    var result = try runAppleScript(allocator,
+        \\tell application "Messages"
+        \\    return count of chats
+        \\end tell
+    );
+    defer result.deinit();
+
+    if (!result.success) return 0;
+    return std.fmt.parseInt(usize, std.mem.trim(u8, result.stdout, " \t\n\r"), 10) catch 0;
+}
+
 pub fn chatIds(allocator: std.mem.Allocator, ids: *std.ArrayListUnmanaged([]u8)) !void {
     var result = try runAppleScript(allocator,
         \\tell application "Messages"
@@ -93,6 +106,23 @@ pub fn chatIds(allocator: std.mem.Allocator, ids: *std.ArrayListUnmanaged([]u8))
         }
     }
 }
+
+pub fn getChatName(allocator: std.mem.Allocator, chat_id: []const u8) ![]u8 {
+    const script = try std.fmt.allocPrint(allocator,
+        \\tell application "Messages"
+        \\    set c to chat id "{s}"
+        \\    return name of c
+        \\end tell
+    , .{chat_id});
+    defer allocator.free(script);
+
+    var result = try runAppleScript(allocator, script);
+    defer result.deinit();
+
+    if (!result.success) return allocator.dupe(u8, "<unknown>");
+    return allocator.dupe(u8, std.mem.trim(u8, result.stdout, " \t\n\r"));
+}
+
 pub fn sendToChat(allocator: std.mem.Allocator, chat_id: []const u8, text: []const u8) !void {
     const escaped = try escapeForAppleScript(allocator, text);
     defer allocator.free(escaped);
