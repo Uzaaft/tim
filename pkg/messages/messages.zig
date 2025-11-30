@@ -17,7 +17,7 @@ pub const ScriptResult = struct {
     }
 };
 
-pub fn runAppleScript(allocator: std.mem.Allocator, script: []const u8) !ScriptResult {
+fn runAppleScript(allocator: std.mem.Allocator, script: []const u8) !ScriptResult {
     const result = try std.process.Child.run(.{
         .allocator = allocator,
         .argv = &.{ "osascript", "-e", script },
