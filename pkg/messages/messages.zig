@@ -1,8 +1,9 @@
 const std = @import("std");
 
 pub const Error = error{
-    ScriptFailed,
+    DatabaseError,
     SendFailed,
+    ScriptFailed,
 };
 
 pub const ScriptResult = struct {
