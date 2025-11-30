@@ -70,3 +70,26 @@ pub fn launchMessages(allocator: std.mem.Allocator) !void {
     );
     defer result.deinit();
 }
+pub fn chatIds(allocator: std.mem.Allocator, ids: *std.ArrayListUnmanaged([]u8)) !void {
+    var result = try runAppleScript(allocator,
+        \\tell application "Messages"
+        \\    set chatList to {}
+        \\    repeat with c in chats
+        \\        set end of chatList to id of c
+        \\    end repeat
+        \\    set AppleScript's text item delimiters to linefeed
+        \\    return chatList as text
+        \\end tell
+    );
+    defer result.deinit();
+
+    if (!result.success) return;
+
+    var lines = std.mem.splitScalar(u8, result.stdout, '\n');
+    while (lines.next()) |line| {
+        const trimmed = std.mem.trim(u8, line, " \t\r");
+        if (trimmed.len > 0) {
+            try ids.append(allocator, try allocator.dupe(u8, trimmed));
+        }
+    }
+}
