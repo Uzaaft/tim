@@ -30,3 +30,20 @@ pub fn runAppleScript(allocator: std.mem.Allocator, script: []const u8) !ScriptR
         .allocator = allocator,
     };
 }
+
+pub fn sendMessage(allocator: std.mem.Allocator, recipient: []const u8, text: []const u8) !void {
+    const escaped = try escapeForAppleScript(allocator, text);
+    defer allocator.free(escaped);
+
+    const script = try std.fmt.allocPrint(allocator,
+        \\tell application "Messages"
+        \\    send "{s}" to buddy "{s}"
+        \\end tell
+    , .{ escaped, recipient });
+    defer allocator.free(script);
+
+    var result = try runAppleScript(allocator, script);
+    defer result.deinit();
+
+    if (!result.success) return Error.SendFailed;
+}
